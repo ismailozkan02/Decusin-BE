@@ -1,4 +1,4 @@
-# EuroLink Portal Backend Repo
+# DECUSIN Portal Backend Repo
 
 ## Setup Instructions
 
