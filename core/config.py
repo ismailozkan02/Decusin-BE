@@ -1,5 +1,6 @@
 from typing import List
 
+from sqlalchemy.engine import URL
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -21,10 +22,11 @@ class Settings(BaseSettings):
 
     # Database
     DB_HOST: str
-    DB_PORT: int = 5432
+    DB_PORT: int = 3306
     DB_NAME: str
     DB_USER: str
     DB_PASSWORD: str
+    DB_DRIVER: str = "mysql+pymysql"
 
     # CORS — comma-separated string in .env
     ORIGINS: str = ""
@@ -34,10 +36,14 @@ class Settings(BaseSettings):
         return [o.strip() for o in self.ORIGINS.split(",") if o.strip()]
 
     @property
-    def database_url(self) -> str:
-        return (
-            f"postgresql://{self.DB_USER}:{self.DB_PASSWORD}"
-            f"@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}"
+    def database_url(self) -> URL:
+        return URL.create(
+            drivername=self.DB_DRIVER,
+            username=self.DB_USER,
+            password=self.DB_PASSWORD,
+            host=self.DB_HOST,
+            port=self.DB_PORT,
+            database=self.DB_NAME,
         )
 
 

@@ -1,4 +1,6 @@
-﻿from sqlalchemy.orm import Session
+import uuid
+
+from sqlalchemy.orm import Session
 
 from core.security import hash_password, verify_password
 from models.sys_account import SysAccount
@@ -35,4 +37,9 @@ def register_user(
 
 
 def get_user_by_id(db: Session, user_id: str) -> SysAccount | None:
-    return db.query(SysAccount).filter(SysAccount.id == user_id).first()
+    try:
+        account_id = uuid.UUID(str(user_id))
+    except ValueError:
+        return None
+
+    return db.query(SysAccount).filter(SysAccount.id == account_id).first()

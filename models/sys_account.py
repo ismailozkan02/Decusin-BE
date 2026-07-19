@@ -2,9 +2,7 @@ import enum
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import Boolean, Column, DateTime, Enum, String
-from sqlalchemy.dialects.postgresql import JSONB, UUID
-from sqlalchemy.ext.mutable import MutableDict
+from sqlalchemy import Boolean, Column, DateTime, Enum, String, Uuid
 
 from db.base import Base
 
@@ -20,7 +18,7 @@ class RoleEnum(str, enum.Enum):
 class SysAccount(Base):
     __tablename__ = "sys_account"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id = Column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     updated_at = Column(
         DateTime(timezone=True),
