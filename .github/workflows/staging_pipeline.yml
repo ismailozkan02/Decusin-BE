@@ -110,12 +110,12 @@ jobs:
     #      source: my-artifact.zip
     #      target: /var/www/portal-backend
 
-    
+
     - name: Execute SSH commands on remote server
       uses: appleboy/ssh-action@v1
       with:
         host: ${{ env.EC2_IP }} # apitest.7lms.com
-        username: ubuntu
+        username: root
         password: ${{ secrets.CONTOBA_SECRET }}
         # port: 22
         script: |
@@ -123,7 +123,7 @@ jobs:
            cd /var/www/decusin/portal-backend
            sudo unzip -o ./my-artifact.zip -d /var/www/decusin/portal-backend
            sudo rm -rf my-artifact.zip 
-           source .venv/bin/activate
+           source venv/bin/activate
            pip install -r requirements.txt
            sudo systemctl restart portal-backend
            
