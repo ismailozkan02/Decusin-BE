@@ -1,0 +1,169 @@
+name: Staging CI-CD pipeline
+
+on:
+  workflow_dispatch:
+  # push:
+  #   branches:
+  #     - main
+  pull_request:
+    branches: [ "staging" ]
+
+env:
+  # AWS_ACCESS_KEY: ${{ secrets.AWS_ACCESS_KEY_ID }}
+  # AWS_SECRET_ACCESS: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+  # AWS_REGION: ${{ secrets.AWS_REGION }}
+  SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY_TEST }}
+  EC2_IP: "158.220.111.127"
+  #EC2_SG: "xxx"
+  WORKSPACE: ${{ github.workspace }}
+  #TOKEN_GITHUB: ${{ secrets.TOKEN_GITHUB }}
+
+jobs:
+  server-live:
+      # needs: []
+      runs-on: ubuntu-latest
+      steps:
+      - name: Waiting for backend to start 
+        run: | 
+           #!/bin/bash
+           host="api.decusin.com"
+           while ! curl -I $host; do
+              sleep 5
+           done
+           echo "curl running!"
+
+           
+  deploy:
+    needs: [server-live]
+    runs-on: ubuntu-latest
+    permissions: write-all
+
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v4
+
+    - name: Delete Old Artifacts
+      uses: actions/github-script@v6
+      id: artifact
+      with:
+         script: |
+          const res = await github.rest.actions.listArtifactsForRepo({
+          owner: context.repo.owner,
+          repo: context.repo.repo,
+          })
+          res.data.artifacts
+           .forEach(({ id }) => {
+             github.rest.actions.deleteArtifact({
+               owner: context.repo.owner,
+               repo: context.repo.repo,
+               artifact_id: id,
+             })
+           })
+           
+    - name: zip 
+      run: |
+         zip -r my-artifact.zip ./* -x ".git/*" -x ".github/*" -x ".gitignore" -x "README.md"
+    
+    - name: Upload a Build Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: my-artifact
+        path: my-artifact.zip
+
+    # - name: Download a Build Artifact
+    #   uses: actions/download-artifact@v2.1.1
+    #   with:
+    #     name: my-artifact  # Artifact name created by the action
+    #     path: .
+
+    - name: List Contents of Workspace
+      if: ${{ always() }}
+      run: ls -al "$WORKSPACE"
+      
+    # - name: Copy file to server
+    #   run: |
+    #     sudo apt-get update
+    #     sudo apt-get install -y sshpass
+    #     sshpass -p ${{ secrets.CONTOBA_SECRET }} scp -o StrictHostKeyChecking=no -r artifact.zip root@ip:/home/ubuntu
+    
+    - name: Copy file to server
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y sshpass
+        sshpass -p ${{ secrets.CONTOBA_SECRET }} scp -o StrictHostKeyChecking=no -r my-artifact.zip root@158.220.111.127:/var/www/decusin/portal-backend/
+    
+    - name: SSH connection to Remote Server
+      uses: appleboy/ssh-action@master
+      with:
+        host: 158.220.111.127 # ${{ secrets.SERVER_HOST }}  # Server IP address or host name
+        username: root # ${{ secrets.SERVER_USERNAME }}  # Server username
+        password: ${{ secrets.CONTOBA_SECRET }}   # Server password
+        script: sudo pkill -f gunicorn
+    
+    # - name: copy file to server
+    #   uses: appleboy/scp-action@v0.1.4
+    #   with:
+    #      host: ${{ env.EC2_IP }} # ${{ secrets.HOST }}
+    #      username: ubuntu # ${{ secrets.USERNAME }}
+    #      key: ${{ env.SSH_PRIVATE_KEY }}
+    #      # port: ${{ secrets.PORT }}
+    #      source: my-artifact.zip
+    #      target: /var/www/portal-backend
+
+    
+
+    - name: Execute SSH commands on remote server
+      uses: appleboy/ssh-action@v1
+      with:
+        host: ${{ env.EC2_IP }} # apitest.7lms.com
+        username: ubuntu
+        key: ${{ env.SSH_PRIVATE_KEY }}
+        # port: 22
+        script: |
+           # sudo apt install unzip
+           cd /var/www/decusin/portal-backend
+           sudo unzip -o ./my-artifact.zip -d /var/www/decusin/portal-backend
+           sudo rm -rf my-artifact.zip 
+           source .venv/bin/activate
+           pip install -r requirements.txt
+           sudo systemctl restart portal-backend
+           
+           # gunicorn -w 4 --timeout 360 -k uvicorn.workers.UvicornWorker --bind unix:/home/ubuntu/nt2_env/app.sock nt2_env.nt2nlp_wsgi:app --daemon
+           # cd /home/ubuntu/
+           # source tg_env/bin/activate
+           # gunicorn -w 4 --timeout 360 -k uvicorn.workers.UvicornWorker --bind unix:/home/ubuntu/tg/tg_env/app.sock tg_env.tgnlp_wsgi:app --daemon
+           # sudo service nginx restart
+
+
+    - name: Wait
+      run: |
+          echo "wait 10 second"
+          sleep 10 # wait 10 seconds
+          
+
+  backend-live:
+      needs: [deploy]
+      if: always()
+      runs-on: ubuntu-latest 
+ 
+      steps:
+      - name: Waiting for backend to start 
+        run: | 
+          #!/bin/bash
+          host="api.decusin.com"
+          duration=$((30 * 1))  # 30 seconds
+          end_time=$((SECONDS + duration))
+          while [ $SECONDS -lt $end_time ]; do
+            if curl -I $host >/dev/null 2>&1; then
+              echo "curl running!"
+              break
+            fi
+            sleep 5
+          done
+          
+          # #!/bin/bash
+          #  host="apitest.linkeuro.de"
+          #  while ! curl -I $host; do
+          #     sleep 5
+          #  done
+          #  echo "curl running!"
