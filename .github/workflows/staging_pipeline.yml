@@ -111,13 +111,12 @@ jobs:
     #      target: /var/www/portal-backend
 
     
-
     - name: Execute SSH commands on remote server
       uses: appleboy/ssh-action@v1
       with:
         host: ${{ env.EC2_IP }} # apitest.7lms.com
         username: ubuntu
-        key: ${{ env.SSH_PRIVATE_KEY }}
+        password: ${{ secrets.CONTOBA_SECRET }}
         # port: 22
         script: |
            # sudo apt install unzip
