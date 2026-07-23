@@ -2,11 +2,10 @@ name: Staging CI-CD pipeline
 
 on:
   workflow_dispatch:
-  # push:
-  #   branches:
-  #     - main
-  pull_request:
-    branches: [ "staging" ]
+  push:
+    branches: [ "main" ]
+  # pull_request:
+  #   branches: [ "staging" ]
 
 env:
   # AWS_ACCESS_KEY: ${{ secrets.AWS_ACCESS_KEY_ID }}
